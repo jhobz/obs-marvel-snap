@@ -9,8 +9,25 @@ TIMER_INTERVAL = 1000
 CHANGE_FN = nil
 
 Player_Data = {
-	CurrentDeckId = "",
+	-- Decks is an array of tables with the following format:
+	-- {
+	-- 	1: {
+	--		Name: string,
+	-- 		CardBack: object,
+	-- 		CardBackId: string,
+	-- 		Cards: object[],
+	-- 		CardIds: string[],
+	-- 		TimeCreatedOrderBy: string (datetime)
+	-- 		Id: string
+	-- 		DataVersion: int
+	-- 		TimeCreated: string (datetime)
+	-- 		TimeUpdated: string (datetime)
+	--	},
+	-- 	2: { ... },
+	-- 	...
+	-- }
 	Decks = {},
+	CurrentDeckId = "",
 	PlayerId = "",
 	SnapDir = ""
 }
@@ -23,7 +40,9 @@ URL_SnapFan_Deck_Format = "https://snap.fan/p/%s/decks/%s/"
 
 
 
--- LOCAL FUNCTIONS
+----------------------------------------------------------
+-- UTILITY FUNCTIONS
+----------------------------------------------------------
 local function debug(s)
 	if DEBUG_MODE then
 		print(s)
@@ -57,6 +76,9 @@ local function parse_file(f)
 	return JSON:decode(jsonStr)
 end
 
+----------------------------------------------------------
+-- SNAP FUNCTIONS
+----------------------------------------------------------
 local function load_deck_list()
 end
 
@@ -73,32 +95,15 @@ local function load_current_deck()
 	end
 end
 
-local function open_gui()
-	-- local source = obs.obs_get_source_by_name(source_name)
-	-- local text = read_file(file_location)
 
-	-- if source ~= nil then
-	-- 	local settings = obs.obs_data_create()
-	-- 	obs.obs_data_set_string(settings, "text", text)
-	-- 	obs.obs_source_update(source, settings)
-	-- 	obs.obs_data_release(settings)
-	-- 	obs.obs_source_release(source)
-	-- end
-
-	OBS.timer_remove(CHANGE_FN)
-end
-
-
-----------------------------------------------------------
 
 local function get_player_id()
 	local playerId = parse_file(Player_Data["SnapDir"] .. PATH_CollectionState)["ServerState"]["Account"]["Id"]
-
-	if playerId == nil then
-		assert(false, "ERROR: Could not acquire playerId from path: " .. Player_Data["SnapDir"])
+	if playerId ~= nil then
+		return playerId
 	end
 
-	return playerId
+	assert(false, "ERROR: Could not acquire playerId from path: " .. Player_Data["SnapDir"])
 end
 
 local function get_current_deck_id()
@@ -111,8 +116,12 @@ local function get_current_deck_id()
 end
 
 local function get_all_decks()
-	-- TODO
-	return {}
+	local decks = parse_file(Player_Data["SnapDir"] .. PATH_CollectionState)["ServerState"]["Decks"]
+	if decks ~= nil then
+		return decks
+	end
+
+	assert(false, "ERROR: could not read full deck list")
 end
 
 local function load_player_data(settings)
@@ -129,7 +138,27 @@ local function load_player_data(settings)
 end
 
 ----------------------------------------------------------
+-- OBS-RELATED FUNCTIONS
+----------------------------------------------------------
+local function open_gui()
+	-- local source = obs.obs_get_source_by_name(source_name)
+	-- local text = read_file(file_location)
 
+	-- if source ~= nil then
+	-- 	local settings = obs.obs_data_create()
+	-- 	obs.obs_data_set_string(settings, "text", text)
+	-- 	obs.obs_source_update(source, settings)
+	-- 	obs.obs_data_release(settings)
+	-- 	obs.obs_source_release(source)
+	-- end
+
+	-- OBS.timer_remove(CHANGE_FN)
+	get_all_decks()
+end
+
+----------------------------------------------------------
+-- OBS EVENT CALLBACKS
+----------------------------------------------------------
 -- A function named script_properties defines the properties that the user
 -- can change for the entire script module itself
 function script_properties()
