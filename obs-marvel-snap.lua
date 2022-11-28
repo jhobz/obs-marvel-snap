@@ -4,6 +4,7 @@ JSON = require("JSON")
 -- OBS DATA
 SOURCE_CurrentDeck = ""
 HOTKEY_id = OBS.OBS_INVALID_HOTKEY_ID
+DEBUG_MODE = false
 
 Player_Data = {
 	CurrentDeckId = "",
@@ -21,6 +22,12 @@ URL_SnapFan_Deck_Format = "https://snap.fan/p/%s/decks/%s/"
 
 
 -- LOCAL FUNCTIONS
+local function debug(s)
+	if DEBUG_MODE then
+		print(s)
+	end
+end
+
 local function read_file(f)
 	local file = io.open(f, "r")
 
@@ -110,7 +117,7 @@ local function load_player_data(settings)
 	Player_Data["SnapDir"] = OBS.obs_data_get_string(settings, "path")
 
 	if Player_Data["SnapDir"] == nil or Player_Data["SnapDir"] == "" then
-		print("Skipping load of player data because SnapDir is nil")
+		debug("Skipping load of player data because SnapDir is nil")
 		return
 	end
 
@@ -124,6 +131,8 @@ end
 -- A function named script_properties defines the properties that the user
 -- can change for the entire script module itself
 function script_properties()
+	debug("script_properties")
+
 	local props = OBS.obs_properties_create()
 	local p = OBS.obs_properties_add_list(props, "source", "Browser Source for Current Deck", OBS.OBS_COMBO_TYPE_EDITABLE, OBS.OBS_COMBO_FORMAT_STRING)
 	local sources = OBS.obs_enum_sources()
@@ -140,7 +149,7 @@ function script_properties()
 	OBS.source_list_release(sources)
 
 	OBS.obs_properties_add_path(props, "path", "Path to Marvel Snap folder", OBS.OBS_PATH_DIRECTORY, nil, Player_Data["SnapDir"])
-
+	OBS.obs_properties_add_bool(props, "debug", "Debug Mode")
 	return props
 end
 
@@ -152,18 +161,18 @@ end
 
 -- A function named script_update will be called when settings are changed
 function script_update(settings)
+	debug("script_update")
+
 	SOURCE_CurrentDeck = OBS.obs_data_get_string(settings, "source")
+	DEBUG_MODE = OBS.obs_data_get_bool(settings, "debug")
+
 	load_player_data(settings)
-
-	-- local playerId = get_player_id()
-
-	print("script_update")
-	-- Load_Deck_List()
 end
 
 -- A function named script_defaults will be called to set the default settings
 function script_defaults(settings)
 	OBS.obs_data_set_default_string(settings, "path", "")
+	OBS.obs_data_set_default_bool(settings, "debug", false)
 end
 
 -- A function named script_save will be called when the script is saved
@@ -172,15 +181,17 @@ end
 -- case, a hotkey's save data).  Settings set via the properties are saved
 -- automatically.
 function script_save(settings)
+	debug('script_save')
+
 	local hotkey_save_array = OBS.obs_hotkey_save(HOTKEY_id)
 	OBS.obs_data_set_array(settings, "open_gui_hotkey", hotkey_save_array)
 	OBS.obs_data_array_release(hotkey_save_array)
 	OBS.obs_data_set_string(settings, "snap_player_id", Player_Data["PlayerId"])
-	print('script_save')
 end
 
 -- a function named script_load will be called on startup
 function script_load(settings)
+	debug("script_load")
 	-- Connect hotkey and activation/deactivation signal callbacks
 	--
 	-- NOTE: These particular script callbacks do not necessarily have to
