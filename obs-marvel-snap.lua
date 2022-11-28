@@ -5,6 +5,8 @@ JSON = require("JSON")
 SOURCE_CurrentDeck = ""
 HOTKEY_id = OBS.OBS_INVALID_HOTKEY_ID
 DEBUG_MODE = false
+TIMER_INTERVAL = 1000
+CHANGE_FN = nil
 
 Player_Data = {
 	CurrentDeckId = "",
@@ -32,7 +34,7 @@ local function read_file(f)
 	local file = io.open(f, "r")
 
 	if file == nil then
-		print("Unable to read file. File not found at location " .. f)
+		assert(false, "ERROR: Unable to read file. File not found at location " .. f)
 		return
 	end
 
@@ -45,7 +47,7 @@ local function parse_file(f)
 	local jsonStr = read_file(f)
 
 	if (jsonStr == nil) then
-		print("Unable to parse file")
+		assert(false, "ERROR: Unable to parse JSON from file " .. f)
 		return
 	end
 
@@ -83,7 +85,7 @@ local function open_gui()
 	-- 	obs.obs_source_release(source)
 	-- end
 
-    load_current_deck()
+	OBS.timer_remove(CHANGE_FN)
 end
 
 
@@ -93,7 +95,7 @@ local function get_player_id()
 	local playerId = parse_file(Player_Data["SnapDir"] .. PATH_CollectionState)["ServerState"]["Account"]["Id"]
 
 	if playerId == nil then
-		print("ERROR: Could not acquire playerId from path: " .. Player_Data["SnapDir"])
+		assert(false, "ERROR: Could not acquire playerId from path: " .. Player_Data["SnapDir"])
 	end
 
 	return playerId
@@ -105,7 +107,7 @@ local function get_current_deck_id()
 		return playState["SelectedDeckId"]
 	end
 
-	print('playState did not read properly')
+	assert(false, "ERROR: playState did not read properly")
 end
 
 local function get_all_decks()
@@ -166,7 +168,25 @@ function script_update(settings)
 	SOURCE_CurrentDeck = OBS.obs_data_get_string(settings, "source")
 	DEBUG_MODE = OBS.obs_data_get_bool(settings, "debug")
 
-	load_player_data(settings)
+	local function check_for_change()
+		---@diagnostic disable-next-line: deprecated
+		debug(unpack({a = "hello"}))
+		---@diagnostic disable-next-line: deprecated
+		local cache = {unpack(Player_Data)}
+		load_player_data(settings)
+		-- TODO: Check against all values
+		if cache["CurrentDeckId"] ~= Player_Data["CurrentDeckId"] then
+			-- TODO: Potentially perform more actions?
+			load_current_deck()
+		end
+	end
+
+	if CHANGE_FN == nil then
+		CHANGE_FN = check_for_change
+	end
+
+	OBS.timer_remove(CHANGE_FN)
+	OBS.timer_add(CHANGE_FN, TIMER_INTERVAL)
 end
 
 -- A function named script_defaults will be called to set the default settings
